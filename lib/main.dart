@@ -1,7 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'app.dart'; // Import the app.dart file
+import 'app.dart'; // Make sure you have app.dart file or adjust accordingly
 
 void main() {
   runApp(const MyInitialApp());
@@ -53,7 +53,6 @@ class _MyWidgetState extends State<MyWidget> with SingleTickerProviderStateMixin
 
   @override
   void initState() {
-    
     super.initState();
     // Initialize AnimationController for fade-in effect
     _animationController = AnimationController(
@@ -70,8 +69,6 @@ class _MyWidgetState extends State<MyWidget> with SingleTickerProviderStateMixin
     // Start the animation
     _animationController.forward();
   }
-
-  m(initState) => initState;
 
   @override
   void dispose() {
@@ -100,14 +97,9 @@ class _MyWidgetState extends State<MyWidget> with SingleTickerProviderStateMixin
       ),
       body: Stack(
         children: [
-          // Background Image
-          SizedBox(
-            height: double.infinity,
-            width: double.infinity,
-            child: Image.asset(
-              'assets/images/4912917.jpg', // ✅ Corrected path
-              fit: BoxFit.cover,
-            ),
+          // Background Color (instead of image)
+          Container(
+            color: Colors.black, // Set your desired background color here
           ),
           // Gradient Overlay
           Container(
@@ -133,7 +125,7 @@ class _MyWidgetState extends State<MyWidget> with SingleTickerProviderStateMixin
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // App Logo or Icon
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.white,
                       child: Icon(

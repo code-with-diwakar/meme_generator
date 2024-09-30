@@ -1,6 +1,6 @@
 // lib/main.dart
 
-import 'dart:async'; // For Completer
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -11,7 +11,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:google_fonts/google_fonts.dart'; // Added for custom fonts
 
 void main() {
   runApp(const MyApp());
@@ -26,28 +25,27 @@ class MyApp extends StatelessWidget {
     // Define a modern and cohesive color scheme using ThemeData.
     final ThemeData theme = ThemeData(
       primarySwatch: Colors.deepPurple,
-      fontFamily: 'Roboto',
       brightness: Brightness.dark,
       scaffoldBackgroundColor: Colors.grey[900],
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      textTheme: TextTheme(
-        headlineMedium: GoogleFonts.lato(
+      textTheme: const TextTheme(
+        headlineMedium: TextStyle(
           fontSize: 36,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-        titleMedium: GoogleFonts.openSans(
+        titleMedium: TextStyle(
           fontSize: 18,
           color: Colors.white70,
         ),
-        labelLarge: GoogleFonts.roboto(
+        labelLarge: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
-        bodyLarge: GoogleFonts.openSans(
+        bodyLarge: TextStyle(
           fontSize: 16,
           color: Colors.white70,
         ),
@@ -56,7 +54,7 @@ class MyApp extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.deepPurpleAccent,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          textStyle: GoogleFonts.roboto(
+          textStyle: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -90,23 +88,39 @@ class _MemePageState extends State<MemePage> {
   List memes = [];
   bool isLoading = true;
   String after = '';
-  String userInput = '';
+  String selectedCategory = 'memes'; // Default category
+
+  final List<String> categories = [
+    'memes',
+    'funny',
+    'dankmemes',
+    'wholesomememes',
+    'AdviceAnimals',
+    'MemeEconomy',
+    'ComedyCemetery',
+    'PrequelMemes',
+    'SequelMemes',
+    'gamingmemes',
+  ];
 
   @override
   void initState() {
     super.initState();
-    fetchMemes();
+    fetchMemes(selectedCategory);
   }
 
-  /// Fetches memes from Reddit's r/memes subreddit.
-  Future<void> fetchMemes() async {
-    final String url = 'https://www.reddit.com/r/memes.json?limit=50&after=$after';
+  /// Fetches memes from Reddit's selected subreddit.
+  Future<void> fetchMemes(String subreddit) async {
+    final String url =
+        'https://www.reddit.com/r/$subreddit.json?limit=50&after=$after';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          memes.addAll(data['data']['children']);
+          List fetchedMemes = data['data']['children'];
+          fetchedMemes.shuffle(); // Randomize memes
+          memes.addAll(fetchedMemes);
           after = data['data']['after'] ?? '';
           isLoading = false;
         });
@@ -133,7 +147,7 @@ class _MemePageState extends State<MemePage> {
       after = '';
       isLoading = true;
     });
-    await fetchMemes();
+    await fetchMemes(selectedCategory);
   }
 
   /// Validates if the URL points to an image.
@@ -143,6 +157,47 @@ class _MemePageState extends State<MemePage> {
         lowerUrl.endsWith('.jpeg') ||
         lowerUrl.endsWith('.png') ||
         lowerUrl.endsWith('.gif');
+  }
+
+  /// Builds the category list.
+  Widget buildCategoryList() {
+    return SizedBox(
+      height: 50,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedCategory = category;
+                memes.clear();
+                after = '';
+                isLoading = true;
+              });
+              fetchMemes(category);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Chip(
+                label: Text(
+                  category,
+                  style: TextStyle(
+                    color: selectedCategory == category
+                        ? Colors.white
+                        : Colors.deepPurpleAccent,
+                  ),
+                ),
+                backgroundColor: selectedCategory == category
+                    ? Colors.deepPurpleAccent
+                    : Colors.grey[800],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   /// Builds the carousel slider displaying top memes.
@@ -228,7 +283,8 @@ class _MemePageState extends State<MemePage> {
             meme['url'] != null &&
             isValidImageUrl(meme['url'])) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Card(
               elevation: 5,
               shape: RoundedRectangleBorder(
@@ -243,25 +299,29 @@ class _MemePageState extends State<MemePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ImageFullScreen(imageUrl: meme['url']),
+                          builder: (context) =>
+                              ImageFullScreen(imageUrl: meme['url']),
                         ),
                       );
                     },
                     child: Hero(
                       tag: meme['url'], // Hero animation for smooth transition
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15)),
                         child: CachedNetworkImage(
                           imageUrl: meme['url'],
                           placeholder: (context, url) => Container(
                             height: 200,
                             color: Colors.grey[300],
-                            child: const Center(child: CircularProgressIndicator()),
+                            child:
+                                const Center(child: CircularProgressIndicator()),
                           ),
                           errorWidget: (context, url, error) => Container(
                             height: 200,
                             color: Colors.grey[300],
-                            child: const Icon(Icons.error, size: 50, color: Colors.red),
+                            child: const Icon(Icons.error,
+                                size: 50, color: Colors.red),
                           ),
                           fit: BoxFit.cover,
                           width: double.infinity,
@@ -274,10 +334,11 @@ class _MemePageState extends State<MemePage> {
                     padding: const EdgeInsets.all(12.0),
                     child: Text(
                       'More Memes',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.deepPurpleAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.deepPurpleAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                   ),
                 ],
@@ -288,44 +349,6 @@ class _MemePageState extends State<MemePage> {
           return const SizedBox();
         }
       },
-    );
-  }
-
-  /// Displays a dialog for user to input text.
-  void _showInputDialog() {
-    String inputText = '';
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Enter Your Text'),
-          content: TextField(
-            onChanged: (value) {
-              inputText = value;
-            },
-            decoration: const InputDecoration(hintText: 'Type here'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  userInput = inputText;
-                });
-                Navigator.of(context).pop();
-                _showSnackBar('You entered: $userInput');
-              },
-              child: const Text('Submit'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Displays a SnackBar with the provided message.
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
     );
   }
 
@@ -365,15 +388,20 @@ class _MemePageState extends State<MemePage> {
                   children: [
                     const SizedBox(height: 16),
                     buildCarousel(carouselMemes),
+                    const SizedBox(height: 16),
+                    buildCategoryList(), // Moved below the carousel
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'More Memes',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.deepPurpleAccent,
+                          'Be Happy',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: Colors.red,
                                 fontWeight: FontWeight.bold,
                               ),
                         ),
@@ -386,12 +414,6 @@ class _MemePageState extends State<MemePage> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showInputDialog,
-        backgroundColor: Colors.deepPurpleAccent,
-        child: const Icon(Icons.edit),
-        tooltip: 'Add Text Overlay',
-      ),
     );
   }
 }
@@ -407,53 +429,43 @@ class ImageFullScreen extends StatefulWidget {
 
 class _ImageFullScreenState extends State<ImageFullScreen> {
   TextOverlay? textOverlay;
-  Offset initialPosition = const Offset(100, 100); // Default position
 
-  /// Displays a dialog to add or edit text overlay.
-  void _showTextInputDialog({TextOverlay? existingOverlay}) {
-    String inputText = existingOverlay?.text ?? '';
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(existingOverlay == null ? 'Add Text' : 'Edit Text'),
-          content: TextField(
-            onChanged: (value) {
-              inputText = value;
-            },
-            controller: TextEditingController(text: inputText),
-            decoration: const InputDecoration(hintText: 'Type here'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  if (existingOverlay != null) {
-                    textOverlay = TextOverlay(
-                      text: inputText,
-                      position: existingOverlay.position,
-                    );
-                  } else {
-                    textOverlay = TextOverlay(
-                      text: inputText,
-                      position: initialPosition,
-                    );
-                  }
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text(existingOverlay == null ? 'Add' : 'Update'),
-            ),
-          ],
-        );
-      },
-    );
+  // Controllers for the two input fields
+  final TextEditingController _textControllerTop = TextEditingController();
+  final TextEditingController _textControllerBottom = TextEditingController();
+
+  // Toggle between edit mode and preview mode
+  bool isEditMode = true;
+
+  @override
+  void dispose() {
+    _textControllerTop.dispose();
+    _textControllerBottom.dispose();
+    super.dispose();
   }
 
-  /// Shares the meme with the added text overlay.
-  Future<void> shareMemeWithText(String imageUrl, TextOverlay? overlay, BuildContext context) async {
+  /// Applies the text overlays and switches to preview mode.
+  void _applyTextAndPreview() {
+    setState(() {
+      textOverlay = TextOverlay(
+        topText: _textControllerTop.text.toUpperCase(),
+        bottomText: _textControllerBottom.text.toUpperCase(),
+      );
+      isEditMode = false; // Switch to preview mode
+    });
+  }
+
+  /// Returns to edit mode to modify texts.
+  void _editText() {
+    setState(() {
+      isEditMode = true;
+    });
+  }
+
+  /// Shares the meme with the added text overlays.
+  Future<void> shareMemeWithTextOverlays(BuildContext context) async {
     try {
-      final uri = Uri.parse(imageUrl);
+      final uri = Uri.parse(widget.imageUrl);
       final response = await http.get(uri);
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -474,31 +486,78 @@ class _ImageFullScreenState extends State<ImageFullScreen> {
         final paint = Paint();
         canvas.drawImage(image, Offset.zero, paint);
 
-        // Draw text overlay if exists
-        if (overlay != null) {
-          final textPainter = TextPainter(
+        // Draw text overlays if they exist
+        if (textOverlay != null) {
+          final double fontSize = image.width * 0.08;
+
+          final textStyle = TextStyle(
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+          );
+
+          final strokeStyle = textStyle.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = fontSize * 0.04
+              ..color = Colors.black,
+          );
+
+          // Draw top text
+          final topTextPainter = TextPainter(
             text: TextSpan(
-              text: overlay.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    offset: Offset(2, 2),
-                    blurRadius: 3,
-                    color: Colors.black,
-                  ),
-                ],
-              ),
+              text: textOverlay!.topText,
+              style: strokeStyle,
             ),
+            textAlign: TextAlign.center,
             textDirection: TextDirection.ltr,
           );
-          textPainter.layout(
-            minWidth: 0,
-            maxWidth: image.width.toDouble(),
+          topTextPainter.layout(
+            minWidth: image.width.toDouble(),
           );
-          textPainter.paint(canvas, overlay.position);
+          topTextPainter.paint(canvas, Offset(0, 10));
+
+          final topTextFillPainter = TextPainter(
+            text: TextSpan(
+              text: textOverlay!.topText,
+              style: textStyle,
+            ),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+          );
+          topTextFillPainter.layout(
+            minWidth: image.width.toDouble(),
+          );
+          topTextFillPainter.paint(canvas, Offset(0, 10));
+
+          // Draw bottom text
+          final bottomTextPainter = TextPainter(
+            text: TextSpan(
+              text: textOverlay!.bottomText,
+              style: strokeStyle,
+            ),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+          );
+          bottomTextPainter.layout(
+            minWidth: image.width.toDouble(),
+          );
+          bottomTextPainter.paint(
+              canvas, Offset(0, image.height - bottomTextPainter.height - 10));
+
+          final bottomTextFillPainter = TextPainter(
+            text: TextSpan(
+              text: textOverlay!.bottomText,
+              style: textStyle,
+            ),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+          );
+          bottomTextFillPainter.layout(
+            minWidth: image.width.toDouble(),
+          );
+          bottomTextFillPainter.paint(
+              canvas, Offset(0, image.height - bottomTextFillPainter.height - 10));
         }
 
         // Convert canvas to image
@@ -524,101 +583,175 @@ class _ImageFullScreenState extends State<ImageFullScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meme'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => _showTextInputDialog(existingOverlay: textOverlay),
-            tooltip: 'Add/Edit Text',
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              shareMemeWithText(widget.imageUrl, textOverlay, context);
-            },
-            tooltip: 'Share Meme',
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        onPanUpdate: (details) {
-          if (textOverlay != null) {
-            setState(() {
-              textOverlay = TextOverlay(
-                text: textOverlay!.text,
-                position: textOverlay!.position + details.delta,
-              );
-            });
-          }
-        },
-        child: Stack(
+  /// Draws the text overlays on the image.
+  Widget _buildMemeImage() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
           children: [
-            Center(
-              child: Hero(
-                tag: widget.imageUrl,
-                child: CachedNetworkImage(
-                  imageUrl: widget.imageUrl,
-                  placeholder: (context, url) =>
-                      const CircularProgressIndicator(color: Colors.white),
-                  errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.red),
-                  fit: BoxFit.contain,
-                ),
+            Hero(
+              tag: widget.imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: widget.imageUrl,
+                placeholder: (context, url) =>
+                    const CircularProgressIndicator(color: Colors.white),
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.error, color: Colors.red),
+                fit: BoxFit.cover,
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
               ),
             ),
-            if (textOverlay != null)
+            if (textOverlay != null) ...[
+              // Top Text
               Positioned(
-                left: textOverlay!.position.dx,
-                top: textOverlay!.position.dy,
+                top: 10,
+                left: 0,
+                right: 0,
                 child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      textOverlay = TextOverlay(
-                        text: textOverlay!.text,
-                        position: textOverlay!.position + details.delta,
-                      );
-                    });
-                  },
+                  onTap: _editText,
                   child: Text(
-                    textOverlay!.text,
-                    style: const TextStyle(
+                    textOverlay!.topText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 40,
+                      fontSize: constraints.maxWidth * 0.08,
                       fontWeight: FontWeight.bold,
                       shadows: [
                         Shadow(
-                          offset: Offset(2, 2),
+                          offset: const Offset(2, 2),
                           blurRadius: 3,
-                          color: Colors.black,
+                          color: Colors.black.withOpacity(0.7),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
+              // Bottom Text
+              Positioned(
+                bottom: 10,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _editText,
+                  child: Text(
+                    textOverlay!.bottomText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: constraints.maxWidth * 0.08,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          offset: const Offset(2, 2),
+                          blurRadius: 3,
+                          color: Colors.black.withOpacity(0.7),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
-        ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Meme Generator'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          if (!isEditMode)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: _editText,
+              tooltip: 'Edit Text',
+            ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              shareMemeWithTextOverlays(context);
+            },
+            tooltip: 'Share Meme',
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showTextInputDialog(),
-        backgroundColor: Colors.deepPurpleAccent,
-        child: const Icon(Icons.text_fields),
-        tooltip: 'Add Text Overlay',
-      ),
+      body: isEditMode
+          ? Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Hero(
+                        tag: widget.imageUrl,
+                        child: CachedNetworkImage(
+                          imageUrl: widget.imageUrl,
+                          placeholder: (context, url) =>
+                              const CircularProgressIndicator(
+                                  color: Colors.white),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error, color: Colors.red),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                      // Optionally display text overlays while editing
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _textControllerTop,
+                        decoration: const InputDecoration(
+                          labelText: 'Top Text',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _textControllerBottom,
+                        decoration: const InputDecoration(
+                          labelText: 'Bottom Text',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _applyTextAndPreview,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
+                        child: const Text('Edit Meme'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : _buildMemeImage(),
     );
   }
 }
 
-/// Represents a text overlay with content and position.
+/// Represents text overlays with content.
 class TextOverlay {
-  final String text;
-  final Offset position;
+  final String topText;
+  final String bottomText;
 
-  TextOverlay({required this.text, required this.position});
+  TextOverlay({
+    required this.topText,
+    required this.bottomText,
+  });
 }
